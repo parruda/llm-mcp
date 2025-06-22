@@ -15,3 +15,5 @@ gem "rubocop-minitest"
 gem "rubocop-rake"
 
 gem "webmock", "~> 3.18"
+
+gem "claude_swarm", path: "~/src/github.com/parruda/claude-swarm"
