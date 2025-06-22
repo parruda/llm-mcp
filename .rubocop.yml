@@ -1,0 +1,68 @@
+AllCops:
+  TargetRubyVersion: 3.4
+  NewCops: enable
+
+plugins:
+  - rubocop-minitest
+  - rubocop-rake
+
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: double_quotes
+
+# Disable documentation for internal classes
+Style/Documentation:
+  Enabled: false
+
+# Allow slightly longer methods
+Metrics/MethodLength:
+  Enabled: false
+
+# Disable gemspec specific cops
+Gemspec/RequireMFA:
+  Enabled: false
+
+Gemspec/RequiredRubyVersion:
+  Enabled: false
+
+Gemspec/DevelopmentDependencies:
+  Enabled: false
+
+Naming/AccessorMethodName:
+  Enabled: false
+
+Metrics/BlockLength:
+  Enabled: false
+
+Metrics/ClassLength:
+  Enabled: false
+
+Metrics/PerceivedComplexity:
+  Enabled: false
+
+Metrics/CyclomaticComplexity:
+  Enabled: false
+
+Metrics/AbcSize:
+  Enabled: false
+
+Naming/PredicateName:
+  Enabled: false
+
+Layout/LineLength:
+  Max: 150
+
+Metrics/ModuleLength:
+  Enabled: false
+
+Minitest/MultipleAssertions:
+  Enabled: false
+
+Metrics/ParameterLists:
+  Enabled: false
+
+Style/PerlBackrefs:
+  Enabled: false
