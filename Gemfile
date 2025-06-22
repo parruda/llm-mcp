@@ -2,14 +2,16 @@
 
 source "https://rubygems.org"
 
-# Specify your gem's dependencies in claude_swarm.gemspec
+# Specify your gem's dependencies in llm-mcp.gemspec
 gemspec
 
-gem "irb"
 gem "rake", "~> 13.0"
 
-gem "minitest", "~> 5.16"
+gem "minitest", "~> 5.22"
 
-gem "claude_swarm", path: "~/src/github.com/parruda/claude-swarm"
-gem "rubocop", "~> 1.21"
+gem "rubocop", "~> 1.66"
+
 gem "rubocop-minitest"
+gem "rubocop-rake"
+
+gem "webmock", "~> 3.18"
