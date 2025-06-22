@@ -35,6 +35,9 @@ Gem::Specification.new do |spec|
   # Dependencies
   spec.add_dependency "zeitwerk", "~> 2.7.3"
   spec.add_dependency "thor", "~> 1.3"
+  spec.add_dependency "ruby_llm"
+  spec.add_dependency "ruby_llm-mcp"
+  spec.add_dependency "fast-mcp-annotations"
 
   # For more information and examples about making a new gem, check out our
   # guide at: https://bundler.io/guides/creating_gem.html
