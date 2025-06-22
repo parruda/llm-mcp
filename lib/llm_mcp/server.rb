@@ -1,0 +1,157 @@
+# frozen_string_literal: true
+
+require "fast_mcp"
+require_relative "session_manager"
+require_relative "json_logger"
+require_relative "provider_factory"
+require_relative "mcp_config_loader"
+require_relative "mcp_tool_adapter"
+require_relative "tool_executor"
+require_relative "tools/task_tool"
+require_relative "tools/reset_session_tool"
+
+module LlmMcp
+  class Server
+    def initialize(config)
+      @config = config
+      @verbose = config[:verbose]
+
+      setup_components
+    end
+
+    def start
+      log_startup_info
+
+      # Create FastMCP server
+      server = FastMcp::Server.new(
+        name: "llm-mcp",
+        version: VERSION
+      )
+
+      # Build context for tools
+      @context = build_context
+
+      # Store context on built-in tool classes
+      Tools::TaskTool.context = @context
+      Tools::ResetSessionTool.context = @context
+
+      # Register built-in tools
+      server.register_tool(Tools::TaskTool)
+      server.register_tool(Tools::ResetSessionTool)
+      log "Registered built-in tools: task, reset_session"
+
+      # NOTE: External MCP tools are only registered with the LLM, not exposed via FastMCP
+
+      # Start the server
+      log "Starting MCP server..."
+      server.start
+    rescue StandardError => e
+      error "Failed to start server: #{e.message}"
+      error e.backtrace.join("\n") if @verbose
+      exit 1
+    end
+
+    private
+
+    def setup_components
+      # Enable role preservation if skip_model_validation is set
+      if @config[:skip_model_validation]
+        LlmMcp::RolePreservation.preserve_roles = true
+        log "Role preservation enabled (skip_model_validation is set)"
+      end
+
+      # Initialize session manager
+      @session_manager = SessionManager.new(
+        session_id: @config[:session_id],
+        session_path: @config[:session_path]
+      )
+      log "Session initialized: #{@session_manager.session_id}"
+
+      # Initialize JSON logger
+      @json_logger = @config[:json_log_path] ? JsonLogger.new(@config[:json_log_path]) : nil
+      log "JSON logging: #{@json_logger ? "enabled" : "disabled"}"
+
+      # Initialize LLM chat
+      @chat = ProviderFactory.create(
+        provider: @config[:provider],
+        model: @config[:model],
+        base_url: @config[:base_url],
+        append_system_prompt: @config[:append_system_prompt],
+        skip_model_validation: @config[:skip_model_validation]
+      )
+      log "LLM initialized: #{@config[:provider]}/#{@config[:model]}"
+
+      # Initialize MCP client and tools
+      setup_mcp_integration
+    end
+
+    def setup_mcp_integration
+      return unless @config[:mcp_config]
+
+      # Load MCP client
+      @mcp_client = McpConfigLoader.load_and_create_client(@config[:mcp_config])
+      unless @mcp_client
+        log "No MCP servers configured or failed to load"
+        return
+      end
+
+      log "MCP client initialized"
+
+      # Create tool executor
+      @tool_executor = ToolExecutor.new(@mcp_client, build_context)
+
+      # Discover and prepare tools
+      begin
+        @mcp_tools = @mcp_client.list_tools
+        log "Discovered #{@mcp_tools.length} MCP tools from external servers"
+
+        # Register tools with LLM (for internal use only)
+        register_tools_with_llm
+      rescue StandardError => e
+        error "Failed to discover MCP tools: #{e.message}"
+        @mcp_tools = []
+      end
+    end
+
+    def register_tools_with_llm
+      return if @mcp_tools.empty? || !@tool_executor
+
+      # Create RubyLLM-compatible tools
+      llm_tools = @mcp_tools.map { |tool_info| @tool_executor.create_llm_tool(tool_info) }
+
+      # Register with the chat instance
+      @chat.with_tools(*llm_tools)
+      log "Registered #{llm_tools.length} MCP tools with LLM for internal use"
+    end
+
+    def build_context
+      {
+        chat: @chat,
+        session_manager: @session_manager,
+        json_logger: @json_logger,
+        provider: @config[:provider],
+        model: @config[:model],
+        mcp_client: @mcp_client,
+        tool_executor: @tool_executor
+      }
+    end
+
+    def log_startup_info
+      log "=" * 50
+      log "LLM-MCP Server v#{VERSION}"
+      log "Provider: #{@config[:provider]}"
+      log "Model: #{@config[:model]}"
+      log "Session: #{@session_manager.session_id}"
+      log "Verbose: #{@verbose}"
+      log "=" * 50
+    end
+
+    def log(message)
+      warn "[llm-mcp] #{message}" if @verbose
+    end
+
+    def error(message)
+      warn "[llm-mcp] ERROR: #{message}"
+    end
+  end
+end

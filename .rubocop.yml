@@ -49,7 +49,7 @@ Metrics/CyclomaticComplexity:
 Metrics/AbcSize:
   Enabled: false
 
-Naming/PredicateName:
+Naming/PredicatePrefix:
   Enabled: false
 
 Layout/LineLength:
