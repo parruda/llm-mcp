@@ -10,6 +10,6 @@ gem "rake", "~> 13.0"
 
 gem "minitest", "~> 5.16"
 
-gem "claude_swarm"
+gem "claude_swarm", path: "~/src/github.com/parruda/claude-swarm"
 gem "rubocop", "~> 1.21"
 gem "rubocop-minitest"

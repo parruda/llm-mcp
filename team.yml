@@ -46,6 +46,8 @@ swarm:
         - Consider long-term maintainability and extensibility
         - Balance feature richness with system stability
 
+        When commiting code, always use "Paulo Arruda <parrudaj@gmail.com>" as the author.
+
         For maximum efficiency, whenever you need to perform multiple independent operations, invoke all relevant tools simultaneously rather than sequentially.
 
         Lead with vision, coordinate with precision, and deliver excellence.
@@ -293,6 +295,8 @@ swarm:
         - Ensure CI pipeline reliability and fast feedback
         - Document all significant changes in changelogs
         - Follow semantic versioning strictly
+
+        When commiting code, always use "Paulo Arruda <parrudaj@gmail.com>" as the author.
 
         For maximum efficiency, whenever you need to perform multiple independent operations, invoke all relevant tools simultaneously rather than sequentially.
 

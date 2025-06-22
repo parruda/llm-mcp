@@ -3,6 +3,14 @@ PATH
   specs:
     llm-mcp (0.1.0)
 
+PATH
+  remote: /Users/paulo/src/github.com/parruda/claude-swarm
+  specs:
+    claude_swarm (0.1.19)
+      fast-mcp-annotations
+      thor (~> 1.3)
+      zeitwerk (~> 2.7.3)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -11,9 +19,6 @@ GEM
     ast (2.4.3)
     base64 (0.3.0)
     bigdecimal (3.2.2)
-    claude_swarm (0.1.19)
-      fast-mcp-annotations
-      thor (~> 1.3)
     concurrent-ruby (1.3.5)
     date (3.4.1)
     dry-configurable (1.3.0)
@@ -120,7 +125,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  claude_swarm
+  claude_swarm!
   irb
   llm-mcp!
   minitest (~> 5.16)
