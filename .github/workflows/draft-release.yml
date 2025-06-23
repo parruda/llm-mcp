@@ -3,7 +3,7 @@ name: Draft Release
 on:
   push:
     tags:
-      - 'v*'
+      - '*'
 
 permissions:
   contents: write
@@ -19,7 +19,7 @@ jobs:
     - name: Extract version from tag
       id: version
       run: |
-        VERSION=${GITHUB_REF#refs/tags/v}
+        VERSION=${GITHUB_REF#refs/tags/}
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "Releasing version: $VERSION"
 
@@ -85,7 +85,7 @@ jobs:
       uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v0.1.15
       with:
         draft: true
-        name: v${{ steps.version.outputs.version }}
+        name: ${{ steps.version.outputs.version }}
         tag_name: ${{ github.ref }}
         body_path: ${{ steps.changelog.outputs.changelog_file }}
         generate_release_notes: ${{ steps.changelog_check.outputs.exists != 'true' }}

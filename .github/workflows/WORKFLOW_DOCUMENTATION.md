@@ -9,12 +9,12 @@ This document describes the GitHub Actions workflows configured for the llm-mcp 
 **Purpose**: Runs continuous integration checks on all pushes and pull requests.
 
 **Features**:
-- Ruby version matrix testing (3.1, 3.2, 3.3, 3.4)
-- Ruby 3.4 marked as experimental with continue-on-error
+- Ruby version matrix testing (3.2, 3.3, 3.4)
 - Automatic removal of local claude_swarm dependency
 - Test execution with optional API keys
-- RuboCop linting
+- RuboCop linting with auto-fix for Gemfile modifications
 - Test artifact upload on failure
+- Ubuntu 22.04 runner for better Ruby compatibility
 
 **Required Secrets**: None (optional: OPENAI_API_KEY, GOOGLE_GENAI_API_KEY)
 
@@ -22,7 +22,7 @@ This document describes the GitHub Actions workflows configured for the llm-mcp 
 
 **Purpose**: Creates draft GitHub releases when version tags are pushed.
 
-**Triggers**: Push of tags matching pattern `v*`
+**Triggers**: Push of any tag
 
 **Features**:
 - Strict semantic version validation
@@ -77,6 +77,11 @@ This document describes the GitHub Actions workflows configured for the llm-mcp 
 
 4. **Claude Swarm Dependency**: The local claude_swarm dependency is automatically removed in CI to prevent build failures.
 
+## Requirements
+
+- Ruby 3.2 or newer (as specified in gemspec)
+- Bundler 2.0 or newer
+
 ## Usage
 
 ### Creating a New Release
@@ -84,8 +89,8 @@ This document describes the GitHub Actions workflows configured for the llm-mcp 
 1. Update version in `lib/llm_mcp/version.rb`
 2. Update CHANGELOG.md with release notes
 3. Commit changes
-4. Tag the release: `git tag v1.2.3`
-5. Push the tag: `git push origin v1.2.3`
+4. Tag the release: `git tag 1.2.3`
+5. Push the tag: `git push origin 1.2.3`
 6. GitHub Actions will create a draft release
 7. Review and publish the draft release
 8. GitHub Actions will automatically publish to RubyGems
