@@ -9,7 +9,7 @@ This document describes the GitHub Actions workflows configured for the llm-mcp 
 **Purpose**: Runs continuous integration checks on all pushes and pull requests.
 
 **Features**:
-- Ruby version matrix testing (3.2, 3.3, 3.4)
+- Ruby version matrix testing (3.2, 3.3)
 - Automatic removal of local claude_swarm dependency
 - Test execution with optional API keys
 - RuboCop linting with auto-fix for Gemfile modifications
