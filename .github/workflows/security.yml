@@ -22,13 +22,15 @@ jobs:
       uses: ruby/setup-ruby@8575951200e472d5f2d95c625da0c7bec8217c42 # v1.161.0
       with:
         ruby-version: '3.3'
-        bundler-cache: true
+        bundler-cache: false # Manual dependency handling due to claude_swarm path
 
     - name: Remove claude_swarm dependency for security check
       run: |
         # Remove the local claude_swarm dependency line from Gemfile
         sed -i '/gem "claude_swarm", path:/d' Gemfile
-        # Re-run bundle install after removing the dependency
+        # Remove Gemfile.lock to avoid frozen mode conflicts
+        rm -f Gemfile.lock
+        # Install dependencies
         bundle install
 
     - name: Install bundler-audit
