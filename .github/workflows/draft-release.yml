@@ -1,0 +1,93 @@
+name: Draft Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  draft-release:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        fetch-depth: 0  # Full history needed for changelog extraction
+
+    - name: Extract version from tag
+      id: version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Releasing version: $VERSION"
+
+    - name: Validate tag format
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        # Strict semver validation including pre-release and build metadata
+        if ! [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?$ ]]; then
+          echo "Error: Invalid version format '$VERSION'. Expected semantic versioning (e.g., 1.2.3, 1.2.3-beta.1, 1.2.3+build.123)"
+          exit 1
+        fi
+        echo "Version format validated: $VERSION"
+
+    - name: Check if CHANGELOG.md exists
+      id: changelog_check
+      run: |
+        if [ -f "CHANGELOG.md" ]; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+          echo "Warning: CHANGELOG.md not found"
+        fi
+
+    - name: Extract changelog for version
+      id: changelog
+      if: steps.changelog_check.outputs.exists == 'true'
+      run: |
+        # Extract the changelog section for this version
+        VERSION="${{ steps.version.outputs.version }}"
+        
+        # Create a temporary file for the changelog content
+        CHANGELOG_FILE=$(mktemp)
+        
+        # Ensure cleanup on exit
+        trap "rm -f $CHANGELOG_FILE" EXIT
+        
+        # Extract changelog section between version headers
+        awk -v ver="## \\[$VERSION\\]" '
+          BEGIN { found = 0 }
+          $0 ~ ver { found = 1; next }
+          found && /^## \[/ { exit }
+          found { print }
+        ' CHANGELOG.md > "$CHANGELOG_FILE"
+        
+        # Check if we found any content
+        if [ ! -s "$CHANGELOG_FILE" ]; then
+          echo "::warning::No changelog entry found for version $VERSION in CHANGELOG.md"
+          echo "No specific changelog found for version $VERSION" > "$CHANGELOG_FILE"
+          echo ""
+          echo "Please ensure CHANGELOG.md contains an entry for this version."
+        else
+          echo "Successfully extracted changelog for version $VERSION"
+        fi
+        
+        # Store the file path for the release body
+        echo "changelog_file=$CHANGELOG_FILE" >> $GITHUB_OUTPUT
+        
+        # Also output first few lines for verification
+        echo "Changelog preview:"
+        head -n 10 "$CHANGELOG_FILE"
+
+    - name: Create draft release
+      uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v0.1.15
+      with:
+        draft: true
+        name: v${{ steps.version.outputs.version }}
+        tag_name: ${{ github.ref }}
+        body_path: ${{ steps.changelog.outputs.changelog_file }}
+        generate_release_notes: ${{ steps.changelog_check.outputs.exists != 'true' }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
