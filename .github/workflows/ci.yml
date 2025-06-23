@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ['3.2', '3.3']
+
+    steps:
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        fetch-depth: 0  # Full git history needed for some operations
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@8575951200e472d5f2d95c625da0c7bec8217c42 # v1.161.0
+      with:
+        ruby-version: ${{ matrix.ruby-version }}
+        bundler-cache: false # Manual dependency handling due to claude_swarm path
+
+    - name: Remove claude_swarm dependency for CI
+      run: |
+        # Remove the local claude_swarm dependency line from Gemfile
+        sed -i '/gem "claude_swarm", path:/d' Gemfile
+        # Remove Gemfile.lock to avoid frozen mode conflicts
+        rm -f Gemfile.lock
+        # Install dependencies
+        bundle install
+        # Auto-fix any RuboCop issues from Gemfile modifications
+        bundle exec rubocop -A Gemfile || true
+
+    - name: Run tests
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        GOOGLE_GENAI_API_KEY: ${{ secrets.GOOGLE_GENAI_API_KEY }}
+      run: |
+        if [ -z "$OPENAI_API_KEY" ] || [ -z "$GOOGLE_GENAI_API_KEY" ]; then
+          echo "Warning: API keys not configured. Some tests may be skipped."
+        fi
+        bundle exec rake test
+
+    - name: Run RuboCop
+      run: bundle exec rubocop
+
+    - name: Upload test artifacts on failure
+      if: failure()
+      uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
+      with:
+        name: test-results-ruby-${{ matrix.ruby-version }}
+        path: |
+          test/reports/
+          coverage/
+        retention-days: 7

@@ -1,0 +1,52 @@
+name: Security
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run weekly on Mondays at 9am UTC
+    - cron: '0 9 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@8575951200e472d5f2d95c625da0c7bec8217c42 # v1.161.0
+      with:
+        ruby-version: '3.3'
+        bundler-cache: false # Manual dependency handling due to claude_swarm path
+
+    - name: Remove claude_swarm dependency for security check
+      run: |
+        # Remove the local claude_swarm dependency line from Gemfile
+        sed -i '/gem "claude_swarm", path:/d' Gemfile
+        # Remove Gemfile.lock to avoid frozen mode conflicts
+        rm -f Gemfile.lock
+        # Install dependencies
+        bundle install
+        # Auto-fix any RuboCop issues from Gemfile modifications
+        bundle exec rubocop -A Gemfile || true
+
+    - name: Install bundler-audit
+      run: gem install bundler-audit
+
+    - name: Update vulnerability database
+      run: bundle audit update
+
+    - name: Run bundle audit
+      run: bundle audit check
+
+    - name: Run brakeman for Rails security scanning
+      if: false # Enable if this becomes a Rails app
+      run: |
+        gem install brakeman
+        brakeman -q -z
+

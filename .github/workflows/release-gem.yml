@@ -1,0 +1,147 @@
+name: Release Gem
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        fetch-depth: 0
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@8575951200e472d5f2d95c625da0c7bec8217c42 # v1.161.0
+      with:
+        ruby-version: '3.3'
+        bundler-cache: false # Manual dependency handling due to claude_swarm path
+
+    - name: Remove claude_swarm dependency for release
+      run: |
+        # Remove the local claude_swarm dependency line from Gemfile
+        sed -i '/gem "claude_swarm", path:/d' Gemfile
+        # Remove Gemfile.lock to avoid frozen mode conflicts
+        rm -f Gemfile.lock
+        # Install dependencies
+        bundle install
+        # Auto-fix any RuboCop issues from Gemfile modifications
+        bundle exec rubocop -A Gemfile || true
+
+    - name: Extract version from release
+      id: version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Releasing gem version: $VERSION"
+
+    - name: Verify version matches gemspec
+      run: |
+        GEMSPEC_VERSION=$(ruby -r ./lib/llm_mcp/version.rb -e "puts LlmMcp::VERSION")
+        RELEASE_VERSION="${{ steps.version.outputs.version }}"
+        
+        if [ "$GEMSPEC_VERSION" != "$RELEASE_VERSION" ]; then
+          echo "Error: Version mismatch!"
+          echo "Gemspec version: $GEMSPEC_VERSION"
+          echo "Release version: $RELEASE_VERSION"
+          exit 1
+        fi
+        
+        echo "Version verified: $GEMSPEC_VERSION"
+
+    - name: Run full test suite
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        GOOGLE_GENAI_API_KEY: ${{ secrets.GOOGLE_GENAI_API_KEY }}
+      run: |
+        if [ -z "$OPENAI_API_KEY" ] || [ -z "$GOOGLE_GENAI_API_KEY" ]; then
+          echo "Error: API keys required for release testing"
+          echo "Please configure OPENAI_API_KEY and GOOGLE_GENAI_API_KEY secrets"
+          exit 1
+        fi
+        bundle exec rake test
+        bundle exec rubocop
+
+    - name: Build gem
+      run: |
+        gem build llm-mcp.gemspec
+        echo "Gem built successfully"
+        ls -la *.gem
+
+    - name: Verify gem contents
+      run: |
+        GEM_FILE=$(ls *.gem | head -n 1)
+        echo "Verifying gem: $GEM_FILE"
+        gem unpack $GEM_FILE
+        UNPACKED_DIR="${GEM_FILE%.gem}"
+        
+        # Check critical files exist
+        for file in lib/llm_mcp.rb lib/llm_mcp/version.rb exe/llm-mcp; do
+          if [ ! -f "$UNPACKED_DIR/$file" ]; then
+            echo "Error: Missing critical file $file in gem"
+            exit 1
+          fi
+        done
+        
+        echo "Gem verification passed"
+        rm -rf $UNPACKED_DIR
+
+    - name: Setup RubyGems credentials
+      env:
+        RUBYGEMS_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
+      run: |
+        mkdir -p ~/.gem
+        echo "---" > ~/.gem/credentials
+        echo ":rubygems_api_key: $RUBYGEMS_API_KEY" >> ~/.gem/credentials
+        chmod 0600 ~/.gem/credentials
+
+    - name: Publish to RubyGems
+      run: |
+        GEM_FILE=$(ls *.gem | head -n 1)
+        echo "Publishing gem: $GEM_FILE"
+        
+        # Retry logic for transient failures
+        MAX_RETRIES=3
+        RETRY_COUNT=0
+        
+        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+          if gem push $GEM_FILE; then
+            echo "Gem published successfully!"
+            break
+          else
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              echo "Publish failed, retrying in 10 seconds... (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)"
+              sleep 10
+            else
+              echo "Error: Failed to publish gem after $MAX_RETRIES attempts"
+              exit 1
+            fi
+          fi
+        done
+        
+        # Clean up credentials immediately after use
+        rm -f ~/.gem/credentials
+
+    - name: Verify publication
+      run: |
+        sleep 10  # Give RubyGems a moment to index
+        
+        VERSION="${{ steps.version.outputs.version }}"
+        if gem search llm-mcp --exact | grep -q "llm-mcp"; then
+          echo "Gem found on RubyGems!"
+          
+          # Try to verify the specific version
+          if gem list llm-mcp --remote --exact | grep -q "$VERSION"; then
+            echo "Version $VERSION successfully published to RubyGems!"
+          else
+            echo "Warning: Gem found but version $VERSION not immediately visible. This may be due to indexing delay."
+          fi
+        else
+          echo "Error: Gem not found on RubyGems after publication"
+          exit 1
+        fi
