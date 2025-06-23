@@ -36,6 +36,8 @@ jobs:
         rm -f Gemfile.lock
         # Install dependencies
         bundle install
+        # Auto-fix any RuboCop issues from Gemfile modifications
+        bundle exec rubocop -A Gemfile || true
 
     - name: Run tests
       env:
