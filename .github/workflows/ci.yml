@@ -11,14 +11,11 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: ['3.2', '3.3', '3.4']
-        include:
-          - ruby-version: '3.4'
-            continue-on-error: true
+        ruby-version: ['3.2', '3.3']
 
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -39,7 +36,6 @@ jobs:
         bundle install
 
     - name: Run tests
-      continue-on-error: ${{ matrix.continue-on-error || false }}
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         GOOGLE_GENAI_API_KEY: ${{ secrets.GOOGLE_GENAI_API_KEY }}
@@ -50,7 +46,6 @@ jobs:
         bundle exec rake test
 
     - name: Run RuboCop
-      continue-on-error: ${{ matrix.continue-on-error || false }}
       run: bundle exec rubocop
 
     - name: Upload test artifacts on failure
