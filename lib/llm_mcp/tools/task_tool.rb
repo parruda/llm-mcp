@@ -7,6 +7,7 @@ module LlmMcp
     class TaskTool < FastMcp::Tool
       tool_name "task"
       description "Send a request to the LLM and get a response"
+      annotations(read_only_hint: true, open_world_hint: false, destructive_hint: false)
 
       arguments do
         required(:prompt).filled(:string).description("The prompt to send to the LLM")

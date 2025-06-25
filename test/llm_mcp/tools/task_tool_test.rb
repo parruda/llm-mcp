@@ -162,6 +162,7 @@ class TaskToolTest < Minitest::Test
 
     # Verify temperature was passed to logger
     log_request = @json_logger.calls.find { |c| c[0] == :log_request }
+
     assert_equal temperature, log_request[1][:temperature]
 
     @chat.verify

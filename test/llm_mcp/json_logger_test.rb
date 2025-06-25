@@ -5,7 +5,13 @@ require "test_helper"
 class JsonLoggerTest < Minitest::Test
   def setup
     @temp_file = Tempfile.new(["test_log", ".jsonl"])
-    @logger = LlmMcp::JsonLogger.new(@temp_file.path)
+    @instance_info = {
+      name: "test_instance",
+      instance_id: "test_123",
+      calling_instance: "caller",
+      calling_instance_id: "caller_456"
+    }
+    @logger = LlmMcp::JsonLogger.new(@temp_file.path, @instance_info)
   end
 
   def teardown
@@ -19,9 +25,17 @@ class JsonLoggerTest < Minitest::Test
     log_content = File.read(@temp_file.path)
     log_entry = JSON.parse(log_content.strip)
 
-    assert_equal "test", log_entry["event_type"]
-    assert_equal "Hello", log_entry["data"]["message"]
+    # Check top-level structure
+    assert_equal "test_instance", log_entry["instance"]
+    assert_equal "test_123", log_entry["instance_id"]
+    assert_equal "caller", log_entry["calling_instance"]
+    assert_equal "caller_456", log_entry["calling_instance_id"]
     assert log_entry["timestamp"]
+
+    # Check event structure
+    assert_equal "test", log_entry["event"]["type"]
+    assert_equal "Hello", log_entry["event"]["message"]
+    assert log_entry["event"]["timestamp"]
   end
 
   def test_logs_request
@@ -35,10 +49,16 @@ class JsonLoggerTest < Minitest::Test
     log_content = File.read(@temp_file.path)
     log_entry = JSON.parse(log_content.strip)
 
-    assert_equal "llm_request", log_entry["event_type"]
-    assert_equal "openai", log_entry["data"]["provider"]
-    assert_equal "gpt-4", log_entry["data"]["model"]
-    assert_in_delta(0.7, log_entry["data"]["temperature"])
+    # Check event structure
+    assert_equal "request", log_entry["event"]["type"]
+    assert_equal "Test", log_entry["event"]["prompt"]
+    assert_equal "caller", log_entry["event"]["from_instance"]
+    assert_equal "caller_456", log_entry["event"]["from_instance_id"]
+    assert_equal "test_instance", log_entry["event"]["to_instance"]
+    assert_equal "test_123", log_entry["event"]["to_instance_id"]
+    assert_equal "openai", log_entry["event"]["provider"]
+    assert_equal "gpt-4", log_entry["event"]["model"]
+    assert_in_delta(0.7, log_entry["event"]["temperature"])
   end
 
   def test_logs_response
@@ -52,9 +72,12 @@ class JsonLoggerTest < Minitest::Test
     log_content = File.read(@temp_file.path)
     log_entry = JSON.parse(log_content.strip)
 
-    assert_equal "llm_response", log_entry["event_type"]
-    assert_equal "Test response", log_entry["data"]["response"]
-    assert_equal({ "input" => 10, "output" => 20 }, log_entry["data"]["tokens"])
+    assert_equal "assistant", log_entry["event"]["type"]
+    assert_equal "assistant", log_entry["event"]["message"]["role"]
+    assert_equal "gpt-4", log_entry["event"]["message"]["model"]
+    assert_equal "text", log_entry["event"]["message"]["content"][0]["type"]
+    assert_equal "Test response", log_entry["event"]["message"]["content"][0]["text"]
+    assert_equal({ "input" => 10, "output" => 20 }, log_entry["event"]["message"]["usage"])
   end
 
   def test_logs_tool_call
@@ -66,9 +89,10 @@ class JsonLoggerTest < Minitest::Test
     log_content = File.read(@temp_file.path)
     log_entry = JSON.parse(log_content.strip)
 
-    assert_equal "tool_call", log_entry["event_type"]
-    assert_equal "Task", log_entry["data"]["tool_name"]
-    assert_equal({ "prompt" => "Hello" }, log_entry["data"]["arguments"])
+    assert_equal "tool_use", log_entry["event"]["type"]
+    assert_equal "Task", log_entry["event"]["tool"]
+    assert_equal "Task", log_entry["event"]["tool_name"]
+    assert_equal({ "prompt" => "Hello" }, log_entry["event"]["arguments"])
   end
 
   def test_logs_tool_response
@@ -80,9 +104,10 @@ class JsonLoggerTest < Minitest::Test
     log_content = File.read(@temp_file.path)
     log_entry = JSON.parse(log_content.strip)
 
-    assert_equal "tool_response", log_entry["event_type"]
-    assert_equal "Task", log_entry["data"]["tool_name"]
-    assert_equal({ "content" => "Response" }, log_entry["data"]["response"])
+    assert_equal "tool_result", log_entry["event"]["type"]
+    assert_equal "Task", log_entry["event"]["tool"]
+    assert_equal "Task", log_entry["event"]["tool_name"]
+    assert_equal({ "content" => "Response" }, log_entry["event"]["response"])
   end
 
   def test_appends_to_existing_file
@@ -96,12 +121,12 @@ class JsonLoggerTest < Minitest::Test
     entry1 = JSON.parse(lines[0])
     entry2 = JSON.parse(lines[1])
 
-    assert_equal "event1", entry1["event_type"]
-    assert_equal "event2", entry2["event_type"]
+    assert_equal "event1", entry1["event"]["type"]
+    assert_equal "event2", entry2["event"]["type"]
   end
 
   def test_handles_nil_log_path
-    logger = LlmMcp::JsonLogger.new(nil)
+    logger = LlmMcp::JsonLogger.new(nil, @instance_info)
     # Should not raise error
     logger.log(event_type: "test", data: {})
   end
@@ -110,7 +135,7 @@ class JsonLoggerTest < Minitest::Test
     temp_dir = Dir.mktmpdir
     log_path = File.join(temp_dir, "subdir", "test.jsonl")
 
-    logger = LlmMcp::JsonLogger.new(log_path)
+    logger = LlmMcp::JsonLogger.new(log_path, @instance_info)
     logger.log(event_type: "test", data: {})
 
     assert_path_exists log_path

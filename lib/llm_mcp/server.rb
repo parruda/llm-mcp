@@ -67,8 +67,14 @@ module LlmMcp
       )
       log "Session initialized: #{@session_manager.session_id}"
 
-      # Initialize JSON logger
-      @json_logger = @config[:json_log_path] ? JsonLogger.new(@config[:json_log_path]) : nil
+      # Initialize JSON logger with instance info
+      instance_info = {
+        name: @config[:name],
+        instance_id: @config[:instance_id],
+        calling_instance: @config[:calling_instance],
+        calling_instance_id: @config[:calling_instance_id]
+      }
+      @json_logger = @config[:json_log_path] ? JsonLogger.new(@config[:json_log_path], instance_info) : nil
       log "JSON logging: #{@json_logger ? "enabled" : "disabled"}"
 
       # Initialize LLM chat
@@ -133,7 +139,11 @@ module LlmMcp
         model: @config[:model],
         mcp_client: @mcp_client,
         tool_executor: @tool_executor,
-        temperature: @config[:temperature]
+        temperature: @config[:temperature],
+        name: @config[:name],
+        calling_instance: @config[:calling_instance],
+        calling_instance_id: @config[:calling_instance_id],
+        instance_id: @config[:instance_id]
       }
     end
 
@@ -143,6 +153,10 @@ module LlmMcp
       log "Provider: #{@config[:provider]}"
       log "Model: #{@config[:model]}"
       log "Session: #{@session_manager.session_id}"
+      log "Instance: #{@config[:name]}" if @config[:name]
+      log "Instance ID: #{@config[:instance_id]}" if @config[:instance_id]
+      log "Calling Instance: #{@config[:calling_instance]}" if @config[:calling_instance]
+      log "Calling Instance ID: #{@config[:calling_instance_id]}" if @config[:calling_instance_id]
       log "Verbose: #{@verbose}"
       log "=" * 50
     end
