@@ -132,7 +132,8 @@ module LlmMcp
         provider: @config[:provider],
         model: @config[:model],
         mcp_client: @mcp_client,
-        tool_executor: @tool_executor
+        tool_executor: @tool_executor,
+        temperature: @config[:temperature]
       }
     end
 

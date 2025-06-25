@@ -10,8 +10,6 @@ module LlmMcp
 
       arguments do
         required(:prompt).filled(:string).description("The prompt to send to the LLM")
-        optional(:temperature).filled(:float).description("Temperature for response generation (0.0-2.0)")
-        optional(:max_tokens).filled(:integer).description("Maximum tokens in response")
       end
 
       class << self
@@ -31,7 +29,7 @@ module LlmMcp
         true
       end
 
-      def call(prompt:, temperature: nil, max_tokens: nil)
+      def call(prompt:)
         chat = context[:chat]
         session_manager = context[:session_manager]
         json_logger = context[:json_logger]
@@ -47,17 +45,16 @@ module LlmMcp
           chat_with_history.add_message(role: msg[:role], content: msg[:content])
         end
 
-        # Apply optional parameters
+        # Apply temperature from context if configured
+        temperature = context[:temperature]
         chat_with_history = chat_with_history.with_temperature(temperature) if temperature
-        chat_with_history = chat_with_history.with_max_tokens(max_tokens) if max_tokens
 
         # Log request
         json_logger&.log_request(
           provider: context[:provider],
           model: context[:model],
           messages: session_manager.to_chat_messages,
-          temperature: temperature,
-          max_tokens: max_tokens
+          temperature: temperature
         )
 
         # Get response

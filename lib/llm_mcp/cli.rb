@@ -19,6 +19,7 @@ module LlmMcp
     option :session_id, desc: "Session identifier (defaults to timestamp)"
     option :session_path, desc: "Custom session storage path"
     option :skip_model_validation, type: :boolean, default: false, desc: "Skip model name validation (for custom models)"
+    option :temperature, type: :numeric, desc: "Temperature for response generation (0.0-2.0)"
     def mcp_serve
       require_relative "server"
 
@@ -32,7 +33,8 @@ module LlmMcp
         mcp_config: options[:mcp_config],
         session_id: options[:session_id],
         session_path: options[:session_path],
-        skip_model_validation: options[:skip_model_validation]
+        skip_model_validation: options[:skip_model_validation],
+        temperature: options[:temperature]
       }
 
       server = Server.new(config)

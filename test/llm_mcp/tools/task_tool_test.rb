@@ -116,22 +116,31 @@ class TaskToolTest < Minitest::Test
     @response.verify
   end
 
-  def test_call_with_optional_parameters
+  def test_call_with_temperature_from_context
     prompt = "Generate code"
     temperature = 0.2
-    max_tokens = 100
 
-    create_tool_with_stubs([]) # Empty messages
+    # Add temperature to context
+    context = {
+      chat: @chat,
+      session_manager: StubSessionManager.new([]),
+      json_logger: StubJsonLogger.new,
+      provider: "openai",
+      model: "gpt-4",
+      temperature: temperature
+    }
+    LlmMcp::Tools::TaskTool.context = context
+    @tool = LlmMcp::Tools::TaskTool.new(headers: {})
+    @session_manager = context[:session_manager]
+    @json_logger = context[:json_logger]
 
     chat_copy = Minitest::Mock.new
     chat_with_temp = Minitest::Mock.new
-    chat_with_tokens = Minitest::Mock.new
 
     @chat.expect :dup, chat_copy
     # No messages to add since to_chat_messages returns empty array
     chat_copy.expect :with_temperature, chat_with_temp, [temperature]
-    chat_with_temp.expect :with_max_tokens, chat_with_tokens, [max_tokens]
-    chat_with_tokens.expect :ask, @response, [prompt]
+    chat_with_temp.expect :ask, @response, [prompt]
 
     # Response methods are called multiple times
     @response.expect :content, "Generated code"  # For adding to session
@@ -145,17 +154,15 @@ class TaskToolTest < Minitest::Test
     @response.expect :output_tokens, 50  # For result
     @response.expect :model_id, "gpt-4"  # For result
 
-    result = @tool.call(prompt: prompt, temperature: temperature, max_tokens: max_tokens)
+    result = @tool.call(prompt: prompt)
 
     assert_equal 1, result[:content].length
     assert_equal "text", result[:content][0][:type]
     assert_equal "Generated code", result[:content][0][:text]
 
-    # Verify parameters were passed to logger
+    # Verify temperature was passed to logger
     log_request = @json_logger.calls.find { |c| c[0] == :log_request }
-
     assert_equal temperature, log_request[1][:temperature]
-    assert_equal max_tokens, log_request[1][:max_tokens]
 
     @chat.verify
     @response.verify
@@ -213,10 +220,8 @@ class TaskToolTest < Minitest::Test
     assert_includes schema[:required], "prompt"
     assert_equal "string", schema[:properties][:prompt][:type]
 
-    assert schema[:properties].key?(:temperature)
-    assert_equal "number", schema[:properties][:temperature][:type]
-
-    assert schema[:properties].key?(:max_tokens)
-    assert_equal "number", schema[:properties][:max_tokens][:type]
+    # Temperature and max_tokens should no longer be in the schema
+    refute schema[:properties].key?(:temperature)
+    refute schema[:properties].key?(:max_tokens)
   end
 end
