@@ -26,9 +26,13 @@ module LlmMcp
   class Error < StandardError; end
 
   Context = Struct.new(
+    :calling_instance,
+    :calling_instance_id,
     :chat,
+    :instance_id,
     :logger,
     :model,
+    :name,
     :provider,
     :session_manager,
     :temperature,
