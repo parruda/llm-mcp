@@ -47,12 +47,14 @@ module LlmMcp
         RubyLLM.configure do |config|
           config.openai_api_key = ENV["OPENAI_API_KEY"] || raise("OPENAI_API_KEY not set")
           config.openai_api_base = base_url if base_url
+          config.request_timeout = 300_000
         end
       end
 
       def configure_google
         RubyLLM.configure do |config|
           config.gemini_api_key = ENV["GEMINI_API_KEY"] || ENV["GOOGLE_API_KEY"] || raise("GEMINI_API_KEY or GOOGLE_API_KEY not set")
+          config.request_timeout = 300_000
         end
       end
     end
