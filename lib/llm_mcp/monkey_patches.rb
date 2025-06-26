@@ -175,3 +175,7 @@ module RubyLLM::Provider
     end
   end
 end
+
+RubyLLM.configure do |config|
+  config.request_timeout = 300_000
+end
