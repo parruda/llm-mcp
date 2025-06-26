@@ -34,13 +34,9 @@ module LlmMcp
     :model,
     :name,
     :provider,
+    :reasoning_effort,
     :session_manager,
     :temperature,
-    :name,
-    :calling_instance,
-    :calling_instance_id,
-    :instance_id,
-    :reasoning_effort,
     keyword_init: true,
   )
 end
