@@ -20,6 +20,7 @@ module LlmMcp
     option :session_path, desc: "Custom session storage path"
     option :skip_model_validation, type: :boolean, default: false, desc: "Skip model name validation (for custom models)"
     option :temperature, type: :numeric, desc: "Temperature for response generation (0.0-2.0)"
+    option :reasoning_effort, type: :string, desc: "Reasoning effort for response generation (low, medium, high)"
     option :name, desc: "Name for this instance"
     option :calling_instance, desc: "Name of the calling instance"
     option :calling_instance_id, desc: "ID of the calling instance"
@@ -42,7 +43,8 @@ module LlmMcp
         name: options[:name],
         calling_instance: options[:calling_instance],
         calling_instance_id: options[:calling_instance_id],
-        instance_id: options[:instance_id]
+        instance_id: options[:instance_id],
+        reasoning_effort: options[:reasoning_effort]
       }
 
       server = Server.new(config)

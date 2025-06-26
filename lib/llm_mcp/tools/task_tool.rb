@@ -50,6 +50,11 @@ module LlmMcp
         temperature = context[:temperature]
         chat_with_history = chat_with_history.with_temperature(temperature) if temperature
 
+        if context[:reasoning_effort] && context[:provider] == "openai" && %w[o3 o3-pro o4-mini-high o4-mini].include?(context[:model])
+          reasoning_effort = context[:reasoning_effort]
+          chat_with_history = chat_with_history.with_options(reasoning_effort: reasoning_effort)
+        end
+
         # Log request
         json_logger&.log_request(
           provider: context[:provider],

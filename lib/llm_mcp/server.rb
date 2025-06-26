@@ -143,7 +143,8 @@ module LlmMcp
         name: @config[:name],
         calling_instance: @config[:calling_instance],
         calling_instance_id: @config[:calling_instance_id],
-        instance_id: @config[:instance_id]
+        instance_id: @config[:instance_id],
+        reasoning_effort: @config[:reasoning_effort]
       }
     end
 
@@ -157,6 +158,7 @@ module LlmMcp
       log "Instance ID: #{@config[:instance_id]}" if @config[:instance_id]
       log "Calling Instance: #{@config[:calling_instance]}" if @config[:calling_instance]
       log "Calling Instance ID: #{@config[:calling_instance_id]}" if @config[:calling_instance_id]
+      log "Reasoning Effort: #{@config[:reasoning_effort]}" if @config[:reasoning_effort]
       log "Verbose: #{@verbose}"
       log "=" * 50
     end
