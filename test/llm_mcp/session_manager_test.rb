@@ -30,14 +30,23 @@ class SessionManagerTest < Minitest::Test
   end
 
   def test_adds_messages
-    message = @session_manager.add_message(
+    current_time = nil
+    current_message = nil
+    Timecop.freeze do
+      current_time = Time.now.iso8601
+      current_message = @session_manager.add_message(
+        role: "user",
+        content: "Hello",
+      )
+    end
+
+    expected_message = {
       role: "user",
       content: "Hello",
-    )
+      timestamp: current_time,
+    }
 
-    assert_equal("user", message[:role])
-    assert_equal("Hello", message[:content])
-    assert(message[:timestamp])
+    assert_equal(expected_message, current_message)
     assert_equal(1, @session_manager.messages.length)
   end
 
