@@ -18,18 +18,19 @@ class ProviderFactoryTest < Minitest::Test
     # Mock RubyLLM configuration and chat creation
     mock_chat = Minitest::Mock.new
 
-    RubyLLM.stub :configure, lambda { |&block|
+    RubyLLM.stub(:configure, lambda { |&block|
       config = Minitest::Mock.new
-      config.expect :openai_api_key=, nil, ["test-openai-key"]
+      config.expect(:openai_api_key=, nil, ["test-openai-key"])
+      config.expect(:request_timeout=, nil, [300_000])
       block&.call(config)
-    } do
-      RubyLLM.stub :chat, mock_chat do
+    }) do
+      RubyLLM.stub(:chat, mock_chat) do
         result = LlmMcp::ProviderFactory.create(
           provider: "openai",
-          model: "gpt-4"
+          model: "gpt-4",
         )
 
-        assert result # Just ensure we got something back
+        assert(result) # Just ensure we got something back
       end
     end
   end
@@ -37,18 +38,19 @@ class ProviderFactoryTest < Minitest::Test
   def test_creates_google_provider
     mock_chat = Minitest::Mock.new
 
-    RubyLLM.stub :configure, lambda { |&block|
+    RubyLLM.stub(:configure, lambda { |&block|
       config = Minitest::Mock.new
-      config.expect :gemini_api_key=, nil, ["test-gemini-key"]
+      config.expect(:gemini_api_key=, nil, ["test-gemini-key"])
+      config.expect(:request_timeout=, nil, [300_000])
       block&.call(config)
-    } do
-      RubyLLM.stub :chat, mock_chat do
+    }) do
+      RubyLLM.stub(:chat, mock_chat) do
         result = LlmMcp::ProviderFactory.create(
           provider: "google",
-          model: "gemini-pro"
+          model: "gemini-pro",
         )
 
-        assert result # Just ensure we got something back
+        assert(result) # Just ensure we got something back
       end
     end
   end
@@ -56,17 +58,18 @@ class ProviderFactoryTest < Minitest::Test
   def test_supports_custom_base_url
     custom_url = "https://custom.openai.com/v1"
 
-    RubyLLM.stub :configure, lambda { |&block|
+    RubyLLM.stub(:configure, lambda { |&block|
       config = Minitest::Mock.new
-      config.expect :openai_api_key=, nil, ["test-openai-key"]
-      config.expect :openai_api_base=, nil, [custom_url]
+      config.expect(:openai_api_key=, nil, ["test-openai-key"])
+      config.expect(:openai_api_base=, nil, [custom_url])
+      config.expect(:request_timeout=, nil, [300_000])
       block&.call(config)
-    } do
-      RubyLLM.stub :chat, Minitest::Mock.new do
+    }) do
+      RubyLLM.stub(:chat, Minitest::Mock.new) do
         LlmMcp::ProviderFactory.create(
           provider: "openai",
           model: "gpt-4",
-          base_url: custom_url
+          base_url: custom_url,
         )
       end
     end
@@ -74,18 +77,19 @@ class ProviderFactoryTest < Minitest::Test
 
   def test_appends_system_prompt
     mock_chat = Minitest::Mock.new
-    mock_chat.expect :with_instructions, mock_chat, ["You are helpful"]
+    mock_chat.expect(:with_instructions, mock_chat, ["You are helpful"])
 
-    RubyLLM.stub :configure, lambda { |&block|
+    RubyLLM.stub(:configure, lambda { |&block|
       config = Minitest::Mock.new
-      config.expect :openai_api_key=, nil, ["test-openai-key"]
+      config.expect(:openai_api_key=, nil, ["test-openai-key"])
+      config.expect(:request_timeout=, nil, [300_000])
       block&.call(config)
-    } do
-      RubyLLM.stub :chat, mock_chat do
+    }) do
+      RubyLLM.stub(:chat, mock_chat) do
         LlmMcp::ProviderFactory.create(
           provider: "openai",
           model: "gpt-4",
-          append_system_prompt: "You are helpful"
+          append_system_prompt: "You are helpful",
         )
 
         mock_chat.verify
@@ -97,7 +101,7 @@ class ProviderFactoryTest < Minitest::Test
     assert_raises(ArgumentError) do
       LlmMcp::ProviderFactory.create(
         provider: "unsupported",
-        model: "some-model"
+        model: "some-model",
       )
     end
   end
@@ -105,10 +109,10 @@ class ProviderFactoryTest < Minitest::Test
   def test_raises_when_api_key_missing
     ENV.delete("OPENAI_API_KEY")
 
-    assert_raises(RuntimeError) do
+    assert_raises(KeyError) do
       LlmMcp::ProviderFactory.create(
         provider: "openai",
-        model: "gpt-4"
+        model: "gpt-4",
       )
     end
   end
@@ -116,18 +120,19 @@ class ProviderFactoryTest < Minitest::Test
   def test_accepts_gemini_as_google_alias
     mock_chat = Minitest::Mock.new
 
-    RubyLLM.stub :configure, lambda { |&block|
+    RubyLLM.stub(:configure, lambda { |&block|
       config = Minitest::Mock.new
-      config.expect :gemini_api_key=, nil, ["test-gemini-key"]
+      config.expect(:gemini_api_key=, nil, ["test-gemini-key"])
+      config.expect(:request_timeout=, nil, [300_000])
       block&.call(config)
-    } do
-      RubyLLM.stub :chat, mock_chat do
+    }) do
+      RubyLLM.stub(:chat, mock_chat) do
         result = LlmMcp::ProviderFactory.create(
           provider: "gemini",
-          model: "gemini-pro"
+          model: "gemini-pro",
         )
 
-        assert result # Just ensure we got something back
+        assert(result) # Just ensure we got something back
       end
     end
   end

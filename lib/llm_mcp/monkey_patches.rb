@@ -1,6 +1,30 @@
-# Combined RubyLLM monkey patches
+# frozen_string_literal: true
 
-# Module to control role preservation
+# Monkey patches for ruby_llm to customize behavior
+
+# Add with_max_tokens method to RubyLLM::Chat
+module RubyLLM
+  class Chat
+    def with_max_tokens(max_tokens)
+      dup.tap { |chat| chat.instance_variable_set(:@max_tokens, max_tokens) }
+    end
+
+    # Override complete to use max_tokens if set
+    alias_method :original_complete, :complete
+
+    def complete
+      options = {}
+      options[:max_tokens] = @max_tokens if instance_variable_defined?(:@max_tokens) && @max_tokens
+
+      if options.empty?
+        original_complete
+      else
+        original_complete(**options)
+      end
+    end
+  end
+end
+
 module LlmMcp
   module RolePreservation
     class << self
@@ -44,9 +68,11 @@ end
 
 # Patch Provider module to support custom options
 module RubyLLMProviderPatch
-  def self.extended(base)
-    base.singleton_class.class_eval do
-      attr_accessor :custom_options
+  class << self
+    def extended(base)
+      base.singleton_class.class_eval do
+        attr_accessor(:custom_options)
+      end
     end
   end
 
@@ -64,7 +90,7 @@ module RubyLLM
     module OpenAI
       module Chat
         # Store the original method
-        alias original_format_role format_role
+        alias_method :original_format_role, :format_role
 
         # Override format_role to optionally preserve all roles
         def format_role(role)
@@ -79,7 +105,7 @@ module RubyLLM
 
     module Gemini
       module Chat
-        alias original_format_role format_role if method_defined?(:format_role)
+        alias_method :original_format_role, :format_role if method_defined?(:format_role)
 
         def format_role(role)
           if LlmMcp::RolePreservation.preserve_roles
@@ -99,7 +125,7 @@ module RubyLLM
 
     module Anthropic
       module Chat
-        alias original_convert_role convert_role if method_defined?(:convert_role)
+        alias_method :original_convert_role, :convert_role if method_defined?(:convert_role)
 
         def convert_role(role)
           if LlmMcp::RolePreservation.preserve_roles
@@ -146,32 +172,34 @@ RubyLLM::Provider.providers.each do |_name, provider_module|
 end
 
 # Ensure future providers also get the patch
-module RubyLLM::Provider
-  class << self
-    alias original_register register unless method_defined?(:original_register)
+module RubyLLM
+  module Provider
+    class << self
+      alias_method :original_register, :register unless method_defined?(:original_register)
 
-    def register(name, provider_module)
-      # Extend the provider module
-      provider_module.extend(RubyLLMProviderPatch) unless provider_module.singleton_class.include?(RubyLLMProviderPatch)
+      def register(name, provider_module)
+        # Extend the provider module
+        provider_module.extend(RubyLLMProviderPatch) unless provider_module.singleton_class.include?(RubyLLMProviderPatch)
 
-      # Patch the Chat module if it exists
-      if provider_module.const_defined?(:Chat)
-        chat_module = provider_module.const_get(:Chat)
-        # Only patch if render_payload method exists
-        if chat_module.method_defined?(:render_payload)
-          chat_module.module_eval do
-            alias_method :original_render_payload, :render_payload unless method_defined?(:original_render_payload)
+        # Patch the Chat module if it exists
+        if provider_module.const_defined?(:Chat)
+          chat_module = provider_module.const_get(:Chat)
+          # Only patch if render_payload method exists
+          if chat_module.method_defined?(:render_payload)
+            chat_module.module_eval do
+              alias_method(:original_render_payload, :render_payload) unless method_defined?(:original_render_payload)
 
-            define_method :render_payload do |messages, tools:, temperature:, model:, stream:|
-              payload = original_render_payload(messages, tools: tools, temperature: temperature, model: model, stream: stream)
-              payload.merge!(provider_module.custom_options) if provider_module.respond_to?(:custom_options) && provider_module.custom_options
-              payload
+              define_method(:render_payload) do |messages, tools:, temperature:, model:, stream:|
+                payload = original_render_payload(messages, tools: tools, temperature: temperature, model: model, stream: stream)
+                payload.merge!(provider_module.custom_options) if provider_module.respond_to?(:custom_options) && provider_module.custom_options
+                payload
+              end
             end
           end
         end
-      end
 
-      original_register(name, provider_module)
+        original_register(name, provider_module)
+      end
     end
   end
 end

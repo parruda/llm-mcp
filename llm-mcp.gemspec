@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
 
   spec.summary = "Expose LLMs from multiple providers via MCP protocol"
   spec.description = "A Ruby gem that creates MCP servers to expose LLMs (OpenAI, Google, etc.) " \
-                     "with standardized tools for chat and session management"
+    "with standardized tools for chat and session management"
   spec.homepage = "https://github.com/parruda/llm-mcp"
   spec.required_ruby_version = ">= 3.2.0"
 
@@ -23,10 +23,10 @@ Gem::Specification.new do |spec|
   # Specify which files should be added to the gem when it is released.
   # The `git ls-files -z` loads the files in the RubyGem that have been added into git.
   gemspec = File.basename(__FILE__)
-  spec.files = IO.popen(%w[git ls-files -z], chdir: __dir__, err: IO::NULL) do |ls|
+  spec.files = IO.popen(["git", "ls-files", "-z"], chdir: __dir__, err: IO::NULL) do |ls|
     ls.readlines("\x0", chomp: true).reject do |f|
       (f == gemspec) ||
-        f.start_with?(*%w[bin/ test/ spec/ features/ .git appveyor Gemfile])
+        f.start_with?("bin/", "test/", "spec/", "features/", ".git", "appveyor", "Gemfile")
     end
   end
   spec.bindir = "exe"
@@ -34,11 +34,11 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   # Dependencies
-  spec.add_dependency "concurrent-ruby", "~> 1.2"
-  spec.add_dependency "fast-mcp-annotations", "~> 1.5.3"
-  spec.add_dependency "json", "~> 2.6"
-  spec.add_dependency "ruby_llm", "~> 1.3"
-  spec.add_dependency "ruby-mcp-client", "~> 0.7.1"
-  spec.add_dependency "thor", "~> 1.3"
-  spec.add_dependency "zeitwerk", "~> 2.7.3"
+  spec.add_dependency("concurrent-ruby", "~> 1.2")
+  spec.add_dependency("fast-mcp-annotations", "~> 1.5")
+  spec.add_dependency("json", "~> 2.6")
+  spec.add_dependency("ruby_llm", "~> 1.3")
+  spec.add_dependency("ruby-mcp-client", "~> 0.7.1")
+  spec.add_dependency("thor", "~> 1.3")
+  spec.add_dependency("zeitwerk", "~> 2.7.3")
 end

@@ -6,7 +6,10 @@
 /pkg/
 /spec/reports/
 /tmp/
+/logs/
 .prompts.md
 .claude-swarm
+.DS_Store
 *.gem
 .ruby-lsp/
+.mcp.json

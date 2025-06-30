@@ -3,9 +3,13 @@
 module LlmMcp
   # Handles tool execution for both FastMCP serving and RubyLLM integration
   class ToolExecutor
-    def initialize(mcp_client, context)
+    extend Forwardable
+
+    def_delegators :@logger, :log_tool_call, :log_tool_response
+
+    def initialize(mcp_client:, logger:)
       @mcp_client = mcp_client
-      @context = context
+      @logger = logger
       @tool_cache = {}
     end
 
@@ -36,35 +40,34 @@ module LlmMcp
 
       # Convert schema to parameters
       schema = if tool_info.respond_to?(:schema)
-                 tool_info.schema
-               else
-                 tool_info[:inputSchema] || tool_info[:schema]
-               end
+        tool_info.schema
+      else
+        tool_info[:inputSchema] || tool_info[:schema]
+      end
       parameters = convert_schema_to_parameters(schema)
 
       # Create and cache the tool
       description = if tool_info.respond_to?(:description)
-                      tool_info.description || "MCP tool: #{tool_name}"
-                    else
-                      tool_info[:description] || "MCP tool: #{tool_name}"
-                    end
+        tool_info.description || "MCP tool: #{tool_name}"
+      else
+        tool_info[:description] || "MCP tool: #{tool_name}"
+      end
 
       @tool_cache[tool_name] = tool_struct.new(
         tool_name,
         description,
         parameters,
         self,
-        tool_info
+        tool_info,
       )
     end
 
     # Execute a tool call (used by RubyLLM tools)
     def execute_tool(tool_name, args)
-      # Log the call
-      @context[:json_logger]&.log_tool_call(
+      log_tool_call(
         tool_name: tool_name,
         arguments: args,
-        provider: "mcp_via_llm"
+        provider: "mcp_via_llm",
       )
 
       begin
@@ -72,9 +75,9 @@ module LlmMcp
         result = @mcp_client.call_tool(tool_name, args)
 
         # Log the response
-        @context[:json_logger]&.log_tool_response(
+        log_tool_response(
           tool_name: tool_name,
-          response: result
+          response: result,
         )
 
         # Format for RubyLLM
@@ -83,10 +86,10 @@ module LlmMcp
         error_message = "Error calling MCP tool '#{tool_name}': #{e.message}"
 
         # Log the error
-        @context[:json_logger]&.log_tool_response(
+        log_tool_response(
           tool_name: tool_name,
           response: { error: error_message },
-          error: e.message
+          error: e.message,
         )
 
         error_message
@@ -99,19 +102,15 @@ module LlmMcp
       return {} unless schema.is_a?(Hash) && schema[:properties]
 
       required = Array(schema[:required])
-      parameters = {}
-
-      schema[:properties].each do |name, prop|
+      schema[:properties].each_with_object({}) do |(name, prop), parameters|
         param_name = name.to_s
         parameters[param_name] = RubyLLM::Parameter.new(
           param_name,
           type: prop[:type] || "string",
           desc: prop[:description] || "",
-          required: required.include?(param_name) || required.include?(name)
+          required: required.include?(param_name) || required.include?(name),
         )
       end
-
-      parameters
     end
 
     def format_llm_response(result)

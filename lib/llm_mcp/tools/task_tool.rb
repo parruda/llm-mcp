@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
-require "fast_mcp"
-
 module LlmMcp
   module Tools
     class TaskTool < FastMcp::Tool
+      extend Forwardable
+
+      def_delegators :context, :chat, :session_manager, :logger, :provider, :model
+
       tool_name "task"
       description "Send a request to the LLM and get a response"
       annotations(read_only_hint: true, open_world_hint: false, destructive_hint: false)
@@ -30,11 +32,7 @@ module LlmMcp
         true
       end
 
-      def call(prompt:)
-        chat = context[:chat]
-        session_manager = context[:session_manager]
-        json_logger = context[:json_logger]
-
+      def call(prompt:, temperature: nil, max_tokens: nil)
         return { error: "LLM chat instance not initialized" } unless chat
 
         # Add user message to session
@@ -50,17 +48,18 @@ module LlmMcp
         temperature = context[:temperature]
         chat_with_history = chat_with_history.with_temperature(temperature) if temperature
 
-        if context[:reasoning_effort] && context[:provider] == "openai" && %w[o3 o3-pro o4-mini-high o4-mini].include?(context[:model])
+        if context[:reasoning_effort] && context[:provider] == "openai" && ["o3", "o3-pro", "o4-mini-high", "o4-mini"].include?(context[:model])
           reasoning_effort = context[:reasoning_effort]
           chat_with_history = chat_with_history.with_options(reasoning_effort: reasoning_effort)
         end
 
         # Log request
-        json_logger&.log_request(
-          provider: context[:provider],
-          model: context[:model],
+        logger.log_request(
+          provider: provider,
+          model: model,
           messages: session_manager.to_chat_messages,
-          temperature: temperature
+          temperature: temperature,
+          max_tokens: max_tokens,
         )
 
         # Get response
@@ -71,18 +70,18 @@ module LlmMcp
           role: "assistant",
           content: response.content,
           input_tokens: response.input_tokens,
-          output_tokens: response.output_tokens
+          output_tokens: response.output_tokens,
         )
 
         # Log response
-        json_logger&.log_response(
-          provider: context[:provider],
-          model: context[:model],
+        logger.log_response(
+          provider: provider,
+          model: model,
           response: response.content,
           tokens: {
             input: response.input_tokens,
-            output: response.output_tokens
-          }
+            output: response.output_tokens,
+          },
         )
 
         # Return MCP-compliant response format
@@ -90,31 +89,31 @@ module LlmMcp
           content: [
             {
               type: "text",
-              text: response.content
-            }
+              text: response.content,
+            },
           ],
           _meta: {
             tokens: {
               input: response.input_tokens,
-              output: response.output_tokens
+              output: response.output_tokens,
             },
-            model: response.model_id
-          }
+            model: response.model_id,
+          },
         }
       rescue StandardError => e
         error_message = "Error calling LLM: #{e.message}"
-        json_logger&.log(
+        logger.log(
           event_type: "error",
-          data: { error: error_message, backtrace: e.backtrace }
+          data: { error: error_message, backtrace: e.backtrace },
         )
         {
           content: [
             {
               type: "text",
-              text: error_message
-            }
+              text: error_message,
+            },
           ],
-          isError: true
+          isError: true,
         }
       end
     end

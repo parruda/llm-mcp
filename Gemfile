@@ -5,15 +5,13 @@ source "https://rubygems.org"
 # Specify your gem's dependencies in llm-mcp.gemspec
 gemspec
 
-gem "rake", "~> 13.0"
+gem "rake", "~> 13.0", require: false
 
-gem "minitest", "~> 5.22"
+gem "minitest", "~> 5.22", require: false
 
-gem "rubocop", "~> 1.66"
+gem "rubocop-shopify", require: false
 
-gem "rubocop-minitest"
-gem "rubocop-rake"
+gem "webmock", "~> 3.18", require: false
+gem "simplecov", require: false
 
-gem "webmock", "~> 3.18"
-
-gem "claude_swarm", path: "~/src/github.com/parruda/claude-swarm"
+gem "irb", require: false

@@ -1,12 +1,14 @@
 # frozen_string_literal: true
 
-$LOAD_PATH.unshift File.expand_path("../lib", __dir__)
+require "simplecov"
+SimpleCov.start do
+  add_filter "/test/"
+end
+
+$LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
 require "llm_mcp"
 
 require "minitest/autorun"
-begin
-  require "webmock/minitest"
-rescue LoadError
-  # WebMock is optional for some tests
-end
+require "webmock/minitest"
 require "tmpdir"
+require "stringio"

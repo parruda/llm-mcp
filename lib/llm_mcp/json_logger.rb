@@ -1,9 +1,5 @@
 # frozen_string_literal: true
 
-require "json"
-require "concurrent"
-require "fileutils"
-
 module LlmMcp
   class JsonLogger
     def initialize(log_path, instance_info = {})
@@ -26,8 +22,8 @@ module LlmMcp
         timestamp: timestamp,
         event: {
           type: event_type,
-          timestamp: timestamp
-        }.merge(data)
+          timestamp: timestamp,
+        }.merge(data),
       }.compact # Remove nil values
 
       write_log(entry)
@@ -47,8 +43,8 @@ module LlmMcp
           prompt: prompt,
           provider: provider,
           model: model,
-          messages: messages
-        }.merge(metadata).compact
+          messages: messages,
+        }.merge(metadata).compact,
       )
     end
 
@@ -60,12 +56,12 @@ module LlmMcp
             role: "assistant",
             model: model,
             content: [{ type: "text", text: response }],
-            usage: tokens
+            usage: tokens,
           },
           provider: provider,
           response: response,
-          tokens: tokens
-        }.merge(metadata).compact
+          tokens: tokens,
+        }.merge(metadata).compact,
       )
     end
 
@@ -75,8 +71,8 @@ module LlmMcp
         data: {
           tool: tool_name,
           tool_name: tool_name,
-          arguments: arguments
-        }.merge(metadata).compact
+          arguments: arguments,
+        }.merge(metadata).compact,
       )
     end
 
@@ -86,8 +82,8 @@ module LlmMcp
         data: {
           tool: tool_name,
           tool_name: tool_name,
-          response: response
-        }.merge(metadata).compact
+          response: response,
+        }.merge(metadata).compact,
       )
     end
 
@@ -111,7 +107,7 @@ module LlmMcp
         end
       end
     rescue StandardError => e
-      warn "Failed to write to log: #{e.message}"
+      warn("Failed to write to log: #{e.message}")
     end
   end
 end

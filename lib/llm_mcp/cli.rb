@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require "thor"
-
 module LlmMcp
   class CLI < Thor
-    def self.exit_on_failure?
-      true
+    class << self
+      def exit_on_failure?
+        true
+      end
     end
 
     desc "mcp-serve", "Start an MCP server that exposes LLMs"
@@ -26,33 +26,12 @@ module LlmMcp
     option :calling_instance_id, desc: "ID of the calling instance"
     option :instance_id, desc: "ID for this instance"
     def mcp_serve
-      require_relative "server"
-
-      config = {
-        provider: options[:provider],
-        model: options[:model],
-        base_url: options[:base_url],
-        append_system_prompt: options[:append_system_prompt],
-        verbose: options[:verbose],
-        json_log_path: options[:json_log_path],
-        mcp_config: options[:mcp_config],
-        session_id: options[:session_id],
-        session_path: options[:session_path],
-        skip_model_validation: options[:skip_model_validation],
-        temperature: options[:temperature],
-        name: options[:name],
-        calling_instance: options[:calling_instance],
-        calling_instance_id: options[:calling_instance_id],
-        instance_id: options[:instance_id],
-        reasoning_effort: options[:reasoning_effort]
-      }
-
-      server = Server.new(config)
+      server = Server.new(options)
       server.start
     rescue StandardError => e
-      error "Error: #{e.message}"
-      error e.backtrace.join("\n") if options[:verbose]
-      exit 1
+      error("Error: #{e.message}")
+      error(e.backtrace.join("\n")) if options[:verbose]
+      exit(1)
     end
 
     desc "version", "Show version"
@@ -63,7 +42,7 @@ module LlmMcp
     private
 
     def error(message)
-      warn message
+      warn(message)
     end
   end
 end

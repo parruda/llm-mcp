@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require "fast_mcp"
-require "json"
-
 module LlmMcp
   # Dynamically creates FastMCP-compatible tool classes from MCP tool definitions
   class McpToolAdapter
@@ -17,6 +14,10 @@ module LlmMcp
 
         # Create new tool class
         tool_class = Class.new(FastMcp::Tool) do
+          extend Forwardable
+
+          def_delegators :@context, :logger
+
           # Class-level configuration
           @tool_info = tool_info
           @mcp_client = mcp_client
@@ -40,15 +41,15 @@ module LlmMcp
             def input_schema_to_json
               # Use the schema directly from MCP tool info
               schema = if @tool_info.respond_to?(:schema)
-                         @tool_info.schema
-                       else
-                         @tool_info[:inputSchema] || @tool_info[:schema]
-                       end
+                @tool_info.schema
+              else
+                @tool_info[:inputSchema] || @tool_info[:schema]
+              end
 
               schema || {
                 type: "object",
                 properties: {},
-                required: []
+                required: [],
               }
             end
           end
@@ -68,13 +69,12 @@ module LlmMcp
             mcp_client = self.class.mcp_client
             tool_info = self.class.tool_info
             tool_name = tool_info.respond_to?(:name) ? tool_info.name : tool_info[:name]
-            context = self.class.context
 
             # Log the call if JSON logger is available
-            context[:json_logger]&.log_tool_call(
+            logger.log_tool_call(
               tool_name: tool_name,
               arguments: args,
-              provider: "mcp"
+              provider: "mcp",
             )
 
             begin
@@ -82,9 +82,9 @@ module LlmMcp
               result = mcp_client.call_tool(tool_name, args)
 
               # Log the response
-              context[:json_logger]&.log_tool_response(
+              logger.log_tool_response(
                 tool_name: tool_name,
-                response: result
+                response: result,
               )
 
               # Format for FastMCP
@@ -94,17 +94,17 @@ module LlmMcp
                 content: [
                   {
                     type: "text",
-                    text: "Error calling MCP tool '#{tool_name}': #{e.message}"
-                  }
+                    text: "Error calling MCP tool '#{tool_name}': #{e.message}",
+                  },
                 ],
-                isError: true
+                isError: true,
               }
 
               # Log the error
-              context[:json_logger]&.log_tool_response(
+              logger.log_tool_response(
                 tool_name: tool_name,
                 response: error_response,
-                error: e.message
+                error: e.message,
               )
 
               error_response
@@ -122,10 +122,10 @@ module LlmMcp
                   content: [
                     {
                       type: "text",
-                      text: "MCP Error: #{result[:error][:message] || result[:error]}"
-                    }
+                      text: "MCP Error: #{result[:error][:message] || result[:error]}",
+                    },
                   ],
-                  isError: true
+                  isError: true,
                 }
               elsif result[:result]
                 # JSON-RPC success response - extract the actual result
@@ -140,9 +140,9 @@ module LlmMcp
                 content: [
                   {
                     type: "text",
-                    text: result.to_s
-                  }
-                ]
+                    text: result.to_s,
+                  },
+                ],
               }
             end
           end
@@ -159,9 +159,9 @@ module LlmMcp
                   content: [
                     {
                       type: "text",
-                      text: JSON.pretty_generate(content)
-                    }
-                  ]
+                      text: JSON.pretty_generate(content),
+                    },
+                  ],
                 }
               end
             when Hash
@@ -177,9 +177,9 @@ module LlmMcp
                   content: [
                     {
                       type: "text",
-                      text: JSON.pretty_generate(content)
-                    }
-                  ]
+                      text: JSON.pretty_generate(content),
+                    },
+                  ],
                 }
               end
             when String
@@ -187,18 +187,18 @@ module LlmMcp
                 content: [
                   {
                     type: "text",
-                    text: content
-                  }
-                ]
+                    text: content,
+                  },
+                ],
               }
             else
               {
                 content: [
                   {
                     type: "text",
-                    text: content.to_s
-                  }
-                ]
+                    text: content.to_s,
+                  },
+                ],
               }
             end
           end
