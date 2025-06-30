@@ -1,19 +1,19 @@
 # frozen_string_literal: true
 
-require "zeitwerk"
+require "logger"
 require "forwardable"
 require "thor"
 require "fast_mcp"
 require "ruby_llm"
 require "json"
 require "fileutils"
-require "concurrent"
 require "mcp_client"
 require "time"
 
 # Load monkey patches after ruby_llm is loaded
 require_relative "llm_mcp/monkey_patches"
 
+require "zeitwerk"
 loader = Zeitwerk::Loader.for_gem
 loader.inflector.inflect(
   "cli" => "CLI",

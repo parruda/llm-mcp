@@ -14,52 +14,34 @@ module LlmMcp
     end
 
     # Create a RubyLLM-compatible tool object
-    def create_llm_tool(tool_info)
-      tool_name = tool_info.respond_to?(:name) ? tool_info.name : tool_info[:name]
-
+    def create_llm_tool(mcp_client_tool)
+      tool_name = mcp_client_tool.name
       # Return cached tool if available
-      return @tool_cache[tool_name] if @tool_cache[tool_name]
+      return @tool_cache[tool_name] if @tool_cache.key?(tool_name)
 
-      # Create tool struct that RubyLLM can use
-      tool_struct = Struct.new(:name, :description, :parameters) do
-        attr_reader :executor, :tool_info
+      parameters = convert_schema_to_parameters(tool_info.schema)
+      description = tool_info.description || "MCP tool: #{tool_name}"
 
-        def initialize(name, description, parameters, executor, tool_info)
-          super(name, description, parameters)
+      # Create tool class that RubyLLM can use
+      tool_class = Class.new(RubyLLM::Tool) do
+        description description
+
+        parameters.each do |param_name, param_info|
+          param param_name, **param_info
+        end
+
+        def initialize(executor, tool_name)
+          super()
           @executor = executor
-          @tool_info = tool_info
+          @tool_name = tool_name
         end
 
-        def call(args = {})
-          # Handle both positional and keyword arguments
-          args = {} unless args.is_a?(Hash)
-          tool_name = @tool_info.respond_to?(:name) ? @tool_info.name : @tool_info[:name]
-          @executor.execute_tool(tool_name, args)
+        def execute(**args)
+          @executor.execute_tool(@tool_name, args)
         end
       end
 
-      # Convert schema to parameters
-      schema = if tool_info.respond_to?(:schema)
-        tool_info.schema
-      else
-        tool_info[:inputSchema] || tool_info[:schema]
-      end
-      parameters = convert_schema_to_parameters(schema)
-
-      # Create and cache the tool
-      description = if tool_info.respond_to?(:description)
-        tool_info.description || "MCP tool: #{tool_name}"
-      else
-        tool_info[:description] || "MCP tool: #{tool_name}"
-      end
-
-      @tool_cache[tool_name] = tool_struct.new(
-        tool_name,
-        description,
-        parameters,
-        self,
-        tool_info,
-      )
+      @tool_cache[tool_name] = tool_class.new(self, tool_name)
     end
 
     # Execute a tool call (used by RubyLLM tools)
@@ -104,12 +86,11 @@ module LlmMcp
       required = Array(schema[:required])
       schema[:properties].each_with_object({}) do |(name, prop), parameters|
         param_name = name.to_s
-        parameters[param_name] = RubyLLM::Parameter.new(
-          param_name,
+        parameters[param_name] = {
           type: prop[:type] || "string",
           desc: prop[:description] || "",
           required: required.include?(param_name) || required.include?(name),
-        )
+        }
       end
     end
 

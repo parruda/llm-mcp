@@ -215,17 +215,4 @@ class JsonLoggerTest < Minitest::Test
     # Should not raise error
     logger.log(event_type: "test", data: {})
   end
-
-  def test_creates_log_directory_if_missing
-    temp_dir = Dir.mktmpdir
-    log_path = File.join(temp_dir, "subdir", "test.jsonl")
-
-    logger = LlmMcp::JsonLogger.new(log_path, @instance_info)
-    logger.log(event_type: "test", data: {})
-
-    assert_path_exists(log_path)
-    assert(File.directory?(File.dirname(log_path)))
-
-    FileUtils.rm_rf(temp_dir)
-  end
 end

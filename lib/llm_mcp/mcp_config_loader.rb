@@ -41,19 +41,17 @@ module LlmMcp
             env: config[:env] || {},
           )
         elsif config[:url]
+          mcp_config = {
+            name: server_name.to_s,
+            base_url: config[:url],
+            headers: config[:headers] || {},
+          }
+
           # Determine transport type based on URL or config
           if config[:transport] == "sse" || config[:url].include?("/sse")
-            MCPClient.sse_config(
-              name: server_name.to_s,
-              base_url: config[:url],
-              headers: config[:headers] || {},
-            )
+            MCPClient.sse_config(**mcp_config)
           else
-            MCPClient.http_config(
-              name: server_name.to_s,
-              base_url: config[:url],
-              headers: config[:headers] || {},
-            )
+            MCPClient.http_config(**mcp_config)
           end
         else
           warn("Invalid config for #{server_name}: missing url or command")

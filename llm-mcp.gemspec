@@ -34,8 +34,8 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   # Dependencies
-  spec.add_dependency("concurrent-ruby", "~> 1.2")
   spec.add_dependency("fast-mcp-annotations", "~> 1.5.3")
+  spec.add_dependency("logger", "~> 1.6")
   spec.add_dependency("json", "~> 2.6")
   spec.add_dependency("ruby_llm", "~> 1.3")
   spec.add_dependency("ruby-mcp-client", "~> 0.7.1")
