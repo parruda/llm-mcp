@@ -12,7 +12,7 @@ class SessionManagerTest < Minitest::Test
   end
 
   def teardown
-    FileUtils.rm_rf(@temp_dir)
+    FileUtils.remove_entry(@temp_dir)
   end
 
   def test_initializes_with_custom_session_id

@@ -8,7 +8,7 @@ class McpConfigLoaderTest < Minitest::Test
   end
 
   def teardown
-    FileUtils.rm_rf(@temp_dir)
+    FileUtils.remove_entry(@temp_dir)
   end
 
   def test_loads_stdio_config
@@ -24,14 +24,9 @@ class McpConfigLoaderTest < Minitest::Test
 
     config_file = File.join(@temp_dir, "mcp_config.json")
     File.write(config_file, JSON.generate(config))
+    client = LlmMcp::McpConfigLoader.load_and_create_client(config_file)
 
-    fake_client = Object.new
-
-    MCPClient.stub(:create_client, fake_client) do
-      client = LlmMcp::McpConfigLoader.load_and_create_client(config_file)
-
-      assert_equal(fake_client, client)
-    end
+    assert_instance_of(MCPClient::Client, client)
   end
 
   def test_loads_sse_config
@@ -48,13 +43,9 @@ class McpConfigLoaderTest < Minitest::Test
     config_file = File.join(@temp_dir, "mcp_config.json")
     File.write(config_file, JSON.generate(config))
 
-    fake_client = Object.new
+    client = LlmMcp::McpConfigLoader.load_and_create_client(config_file)
 
-    MCPClient.stub(:create_client, fake_client) do
-      client = LlmMcp::McpConfigLoader.load_and_create_client(config_file)
-
-      assert_equal(fake_client, client)
-    end
+    assert_instance_of(MCPClient::Client, client)
   end
 
   def test_handles_multiple_servers
@@ -68,14 +59,9 @@ class McpConfigLoaderTest < Minitest::Test
     config_file = File.join(@temp_dir, "mcp_config.json")
     File.write(config_file, JSON.generate(config))
 
-    fake_client = Object.new
+    client = LlmMcp::McpConfigLoader.load_and_create_client(config_file)
 
-    # MCPClient.create_client should be called once with configs for all servers
-    MCPClient.stub(:create_client, fake_client) do
-      client = LlmMcp::McpConfigLoader.load_and_create_client(config_file)
-
-      assert_equal(fake_client, client)
-    end
+    assert_instance_of(MCPClient::Client, client)
   end
 
   def test_handles_missing_config_file
@@ -104,14 +90,12 @@ class McpConfigLoaderTest < Minitest::Test
     config_file = File.join(@temp_dir, "mcp_config.json")
     File.write(config_file, JSON.generate(config))
 
-    fake_client = Object.new
-
+    client = nil
     capture_io do
-      # Should still create client with only valid configs
-      MCPClient.stub(:create_client, fake_client) do
-        assert_equal(fake_client, LlmMcp::McpConfigLoader.load_and_create_client(config_file))
-      end
+      client = LlmMcp::McpConfigLoader.load_and_create_client(config_file)
     end
+
+    assert_instance_of(MCPClient::Client, client)
   end
 
   def test_empty_server_config_returns_nil

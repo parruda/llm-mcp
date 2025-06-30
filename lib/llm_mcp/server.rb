@@ -48,7 +48,7 @@ module LlmMcp
       end
 
       # Initialize session manager
-      @session_manager = SessionManager.new(**@config.slice(:session_id, :session_path))
+      @session_manager = SessionManager.new(**@config.slice(:session_id, :session_path).transform_keys(&:to_sym))
       log("Session initialized: #{@session_manager.session_id}")
 
       # Initialize JSON logger with instance info
@@ -62,7 +62,7 @@ module LlmMcp
       log("JSON logging: #{@json_logger ? "enabled" : "disabled"}")
 
       # Initialize LLM chat
-      @chat = ProviderFactory.create(**@config.slice(:provider, :model, :base_url, :append_system_prompt, :skip_model_validation))
+      @chat = ProviderFactory.create(**@config.slice(:provider, :model, :base_url, :append_system_prompt, :skip_model_validation).transform_keys(&:to_sym))
       log("LLM initialized: #{@config[:provider]}/#{@config[:model]}")
 
       # Initialize MCP client and tools
