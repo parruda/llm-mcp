@@ -1,30 +1,8 @@
 # frozen_string_literal: true
 
-# Monkey patches for ruby_llm to customize behavior
+# Combined RubyLLM monkey patches
 
-# Add with_max_tokens method to RubyLLM::Chat
-module RubyLLM
-  class Chat
-    def with_max_tokens(max_tokens)
-      dup.tap { |chat| chat.instance_variable_set(:@max_tokens, max_tokens) }
-    end
-
-    # Override complete to use max_tokens if set
-    alias_method :original_complete, :complete
-
-    def complete
-      options = {}
-      options[:max_tokens] = @max_tokens if instance_variable_defined?(:@max_tokens) && @max_tokens
-
-      if options.empty?
-        original_complete
-      else
-        original_complete(**options)
-      end
-    end
-  end
-end
-
+# Module to control role preservation
 module LlmMcp
   module RolePreservation
     class << self

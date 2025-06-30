@@ -130,7 +130,6 @@ class LlmMcpTest < Minitest::Test
   def test_monkey_patches_are_applied
     # Test that monkey patches from monkey_patches.rb are loaded
     assert(RubyLLM::Chat.instance_methods.include?(:with_max_tokens))
-    assert(RubyLLM::Chat.instance_methods.include?(:original_complete))
     assert(LlmMcp.const_defined?(:RolePreservation))
   end
 end
