@@ -36,10 +36,7 @@ class ResetSessionToolTest < Minitest::Test
     @session_manager = StubSessionManagerForReset.new
     @json_logger = StubJsonLoggerForReset.new
 
-    @context = {
-      session_manager: @session_manager,
-      json_logger: @json_logger
-    }
+    @context = LlmMcp::Context.new(session_manager: @session_manager, logger: @json_logger)
 
     # Set context on the class
     LlmMcp::Tools::ResetSessionTool.context = @context
@@ -49,63 +46,95 @@ class ResetSessionToolTest < Minitest::Test
   def test_call_success
     result = @tool.call
 
-    assert_equal 1, result[:content].length
-    assert_equal "text", result[:content][0][:type]
-    assert_equal "Session has been reset. The conversation history has been cleared.", result[:content][0][:text]
+    expected_result = {
+      content: [{
+        type: "text",
+        text: "Session has been reset. The conversation history has been cleared.",
+      }],
+    }
+
+    assert_equal(expected_result, result)
 
     # Verify session was cleared
-    assert_includes @session_manager.calls, [:clear]
+    assert_includes(@session_manager.calls, [:clear])
 
     # Verify log was called
-    log_call = @json_logger.calls.find { |c| c[0] == :log && c[1][:event_type] == "session_reset" }
+    log_call = @json_logger.calls
+    expected_log_call =
+      [
+        [
+          :log,
+          {
+            event_type: "session_reset",
+            data: {
+              session_id: "test_session_123",
+              previous_message_count: 5,
+            },
+          },
+        ],
+      ]
 
-    assert log_call
-    assert_equal "test_session_123", log_call[1][:data][:session_id]
-    assert_equal 5, log_call[1][:data][:previous_message_count]
+    assert_equal(expected_log_call, log_call)
   end
 
   def test_call_without_session_manager
     # Temporarily set context without session manager
     original_context = LlmMcp::Tools::ResetSessionTool.context
-    LlmMcp::Tools::ResetSessionTool.context = { session_manager: nil }
+    LlmMcp::Tools::ResetSessionTool.context = LlmMcp::Context.new(session_manager: nil)
 
     tool = LlmMcp::Tools::ResetSessionTool.new(headers: {})
     result = tool.call
 
-    assert_equal "Session manager not initialized", result[:error]
+    assert_equal("Session manager not initialized", result[:error])
 
     # Restore original context
     LlmMcp::Tools::ResetSessionTool.context = original_context
   end
 
   def test_call_handles_errors
+    mock_error = Class.new(StandardError) do
+      def backtrace
+        ["Test backtrace"]
+      end
+    end
     # Make session_id raise an error
     @session_manager.define_singleton_method(:session_id) do
-      raise StandardError, "Test error"
+      raise mock_error, "Test error"
     end
 
     result = @tool.call
+    expected_result = {
+      content: [{
+        type: "text",
+        text: "Error resetting session: Test error",
+      }],
+      isError: true,
+    }
 
-    assert_equal 1, result[:content].length
-    assert_equal "text", result[:content][0][:type]
-    assert_equal "Error resetting session: Test error", result[:content][0][:text]
-    assert result[:isError]
+    assert_equal(expected_result, result)
 
     # Verify error was logged
-    log_call = @json_logger.calls.find { |c| c[0] == :log && c[1][:event_type] == "error" }
+    expected_log_call = [
+      [
+        :log,
+        {
+          event_type: "error",
+          data: { error: "Error resetting session: Test error", backtrace: ["Test backtrace"] },
+        },
+      ],
+    ]
 
-    assert log_call
-    assert_equal "Error resetting session: Test error", log_call[1][:data][:error]
+    assert_equal(expected_log_call, @json_logger.calls)
   end
 
   def test_tool_description
-    assert_equal "Clear the conversation context and start fresh", LlmMcp::Tools::ResetSessionTool.description
+    assert_equal("Clear the conversation context and start fresh", LlmMcp::Tools::ResetSessionTool.description)
   end
 
   def test_tool_has_no_required_arguments
     schema = LlmMcp::Tools::ResetSessionTool.input_schema_to_json
 
-    assert_empty schema[:required] || []
+    assert_empty(schema[:required] || [])
     assert_empty(schema[:properties] || {})
   end
 end

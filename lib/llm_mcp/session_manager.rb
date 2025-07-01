@@ -1,12 +1,9 @@
 # frozen_string_literal: true
 
-require "json"
-require "fileutils"
-require "time"
-
 module LlmMcp
   class SessionManager
     DEFAULT_SESSION_PATH = File.expand_path("~/.llm-mcp/sessions")
+    ROLES = ["system", "user", "assistant"].freeze
 
     attr_reader :session_id, :session_path, :messages
 
@@ -24,7 +21,7 @@ module LlmMcp
       message = {
         role: role,
         content: content,
-        timestamp: Time.now.iso8601
+        timestamp: Time.now.iso8601,
       }.merge(metadata)
 
       @messages << message
@@ -38,8 +35,7 @@ module LlmMcp
     end
 
     def to_chat_messages
-      @messages.select { |m| %w[system user assistant].include?(m[:role]) }
-               .map { |m| { role: m[:role], content: m[:content] } }
+      @messages.filter_map { |m| { role: m[:role], content: m[:content] } if ROLES.include?(m[:role]) }
     end
 
     private
@@ -65,7 +61,7 @@ module LlmMcp
       @messages = data[:messages] || []
       @session_id = data[:session_id] || @session_id
     rescue JSON::ParserError => e
-      warn "Warning: Failed to parse session file: #{e.message}"
+      warn("Warning: Failed to parse session file: #{e.message}")
       create_session
     end
 
@@ -78,7 +74,7 @@ module LlmMcp
         session_id: @session_id,
         created_at: @messages.empty? ? Time.now.iso8601 : @messages.first[:timestamp],
         updated_at: Time.now.iso8601,
-        messages: @messages
+        messages: @messages,
       }
 
       File.write(@session_file, JSON.pretty_generate(data))

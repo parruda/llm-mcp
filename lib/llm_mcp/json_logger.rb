@@ -1,36 +1,31 @@
 # frozen_string_literal: true
 
-require "json"
-require "concurrent"
-require "fileutils"
-
 module LlmMcp
   class JsonLogger
     def initialize(log_path, instance_info = {})
-      @log_path = log_path
-      @mutex = Concurrent::ReentrantReadWriteLock.new
-      @instance_info = instance_info
+      @logger = Logger.new(log_path, level: :info, formatter: proc { |_severity, datetime, _progname, msg|
+        iso_time = datetime.iso8601
+        msg[:event][:timestamp] = iso_time
+        msg[:timestamp] = iso_time
 
-      ensure_log_directory
+        JSON.generate(msg) << "\n"
+      })
+      @instance_info = instance_info
     end
 
     def log(event_type:, data:)
-      timestamp = Time.now.iso8601
-
       # Build the top-level structure with instance info
       entry = {
         instance: @instance_info[:name],
         instance_id: @instance_info[:instance_id],
         calling_instance: @instance_info[:calling_instance],
         calling_instance_id: @instance_info[:calling_instance_id],
-        timestamp: timestamp,
         event: {
           type: event_type,
-          timestamp: timestamp
-        }.merge(data)
+        }.merge(data),
       }.compact # Remove nil values
 
-      write_log(entry)
+      @logger.info { entry }
     end
 
     def log_request(provider:, model:, messages:, **metadata)
@@ -47,8 +42,8 @@ module LlmMcp
           prompt: prompt,
           provider: provider,
           model: model,
-          messages: messages
-        }.merge(metadata).compact
+          messages: messages,
+        }.merge(metadata).compact,
       )
     end
 
@@ -60,12 +55,12 @@ module LlmMcp
             role: "assistant",
             model: model,
             content: [{ type: "text", text: response }],
-            usage: tokens
+            usage: tokens,
           },
           provider: provider,
           response: response,
-          tokens: tokens
-        }.merge(metadata).compact
+          tokens: tokens,
+        }.merge(metadata).compact,
       )
     end
 
@@ -75,8 +70,8 @@ module LlmMcp
         data: {
           tool: tool_name,
           tool_name: tool_name,
-          arguments: arguments
-        }.merge(metadata).compact
+          arguments: arguments,
+        }.merge(metadata).compact,
       )
     end
 
@@ -86,32 +81,9 @@ module LlmMcp
         data: {
           tool: tool_name,
           tool_name: tool_name,
-          response: response
-        }.merge(metadata).compact
+          response: response,
+        }.merge(metadata).compact,
       )
-    end
-
-    private
-
-    def ensure_log_directory
-      return unless @log_path
-
-      dir = File.dirname(@log_path)
-      FileUtils.mkdir_p(dir) unless File.directory?(dir)
-    end
-
-    def write_log(entry)
-      return unless @log_path
-
-      @mutex.with_write_lock do
-        File.open(@log_path, "a") do |file|
-          file.flock(File::LOCK_EX)
-          file.puts(JSON.generate(entry))
-          file.flock(File::LOCK_UN)
-        end
-      end
-    rescue StandardError => e
-      warn "Failed to write to log: #{e.message}"
     end
   end
 end
